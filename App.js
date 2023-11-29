@@ -1,4 +1,5 @@
 import { StatusBar } from "expo-status-bar";
+import React, { useEffect, useState } from "react";
 import {
   SafeAreaView,
   StyleSheet,
@@ -16,7 +17,6 @@ import {
   RewardedAd,
   RewardedAdEventType,
 } from "react-native-google-mobile-ads";
-import { useEffect, useState } from "react";
 
 const adUnitId = __DEV__
   ? TestIds.BANNER
@@ -33,10 +33,11 @@ const interstitial = InterstitialAd.createForAdRequest(adUnitId_2, {
 const adUnitId_3 = __DEV__
   ? TestIds.REWARDED
   : "ca-app-pub-xxxxxxxxxxxxx/yyyyyyyyyyyyyy";
-const rewarded = RewardedAd.createForAdRequest(adUnitId, {
+const rewarded = RewardedAd.createForAdRequest(adUnitId_3, {
   requestNonPersonalizedAdsOnly: true,
   keywords: ["fashion", "clothing"],
 });
+
 export default function App() {
   const [loaded, setLoaded] = useState(false);
   const [loaded2, setLoaded2] = useState(false);
@@ -47,23 +48,16 @@ export default function App() {
         setLoaded(true);
       }
     );
-
-    // Start loading the interstitial straight away
     interstitial.load();
-
-    // Unsubscribe from events on unmount
     return unsubscribe;
   }, []);
-  //No advert ready to show yet
-  if (!loaded) {
-    return null;
-  }
 
   // reward ads
   useEffect(() => {
     const unsubscribeLoaded = rewarded.addAdEventListener(
       RewardedAdEventType.LOADED,
       () => {
+        console.log("reward loaded");
         setLoaded2(true);
       }
     );
@@ -73,21 +67,16 @@ export default function App() {
         console.log("User earned reward of ", reward);
       }
     );
-
-    // Start loading the rewarded ad straight away
     rewarded.load();
-
-    // Unsubscribe from events on unmount
     return () => {
       unsubscribeLoaded();
       unsubscribeEarned();
     };
   }, []);
+  // if (!loaded && !loaded2) {
+  //   console.log("Ads not fully loaded yet");
+  // }
 
-  // No advert ready to show yet
-  if (!loaded2) {
-    return null;
-  }
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.viewContainer}>
@@ -103,13 +92,19 @@ export default function App() {
         {/* Interstitial Ads */}
         <TouchableOpacity
           style={styles.showIntertail}
-          onPress={() => interstitial.show()}
+          onPress={() => loaded && interstitial.show()}
         >
           <Text>Show Interstitial Ads</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.showReward}
-          onPress={() => rewarded.show()}
+          onPress={() => {
+            if (loaded2) {
+              rewarded.show();
+            } else {
+              console.log("Not ready to show");
+            }
+          }}
         >
           <Text>Show Reward Ads</Text>
         </TouchableOpacity>
@@ -126,7 +121,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   viewContainer: {
-    flex: 1,
     alignItems: "center",
     justifyContent: "center",
   },
