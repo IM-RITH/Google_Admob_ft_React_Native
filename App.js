@@ -1,6 +1,7 @@
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useState } from "react";
 import {
+  AppState,
   SafeAreaView,
   StyleSheet,
   Text,
@@ -16,11 +17,13 @@ import {
   AdEventType,
   RewardedAd,
   RewardedAdEventType,
+  AppOpenAd,
 } from "react-native-google-mobile-ads";
 
 const adUnitId = __DEV__
   ? TestIds.BANNER
   : "ca-app-pub-xxxxxxxxxxxxx/yyyyyyyyyyyyyy";
+
 const adUnitId_2 = __DEV__
   ? TestIds.INTERSTITIAL
   : "ca-app-pub-xxxxxxxxxxxxx/yyyyyyyyyyyyyy";
@@ -37,10 +40,28 @@ const rewarded = RewardedAd.createForAdRequest(adUnitId_3, {
   requestNonPersonalizedAdsOnly: true,
   keywords: ["fashion", "clothing"],
 });
+// app open ads
+const adUnitId_4 = __DEV__
+  ? TestIds.APP_OPEN
+  : "ca-app-pub-7348380967596828/4446699822";
+
+const appOpenAd = AppOpenAd.createForAdRequest(adUnitId_4, {
+  requestNonPersonalizedAdsOnly: true,
+  keywords: ["fashion", "clothing"],
+});
 
 export default function App() {
   const [loaded, setLoaded] = useState(false);
   const [loaded2, setLoaded2] = useState(false);
+  const [appOpenAdLoaded, setAppOpenAdLoaded] = useState(false);
+  const [appState, setAppState] = useState(AppState.currentState);
+  const showAppOpenAds = () => {
+    if (appOpenAdLoaded) {
+      appOpenAd.show().catch((error) => {
+        console.error("Error showing app open ad:", error);
+      });
+    } else console.log("App open ad not ready to show");
+  };
   useEffect(() => {
     const unsubscribe = interstitial.addAdEventListener(
       AdEventType.LOADED,
@@ -76,6 +97,33 @@ export default function App() {
   // if (!loaded && !loaded2) {
   //   console.log("Ads not fully loaded yet");
   // }
+  // app open
+  useEffect(() => {
+    const unsubscribeLoaded = appOpenAd.addAdEventListener(
+      AdEventType.LOADED,
+      () => {
+        console.log("App open ad loaded");
+        setAppOpenAdLoaded(true);
+      }
+    );
+    appOpenAd.load();
+
+    const handleAppStateChange = (nextAppState) => {
+      if (appState.match(/inactive|background/) && nextAppState === "active") {
+        console.log("App has come to the foreground");
+        showAppOpenAds();
+      }
+      setAppState(nextAppState);
+    };
+    const appStateSubscription = AppState.addEventListener(
+      "change",
+      handleAppStateChange
+    );
+    return () => {
+      unsubscribeLoaded();
+      appStateSubscription.remove();
+    };
+  }, [appState]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -121,7 +169,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   viewContainer: {
-    alignItems: "center",
     justifyContent: "center",
   },
   showIntertail: {
